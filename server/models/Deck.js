@@ -13,12 +13,16 @@ const deckSchema = mongoose.Schema(
             trim: true,
             default: '',
         },
-        // New "Type" property for deck categorization
+        // Reference to DeckType instead of hardcoded enum
+        deckType: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'DeckType',
+            required: [true, 'Please specify a deck type'],
+        },
+        // Keep the old type field for backward compatibility during migration
         type: {
             type: String,
-            required: [true, 'Please specify a type for the deck'],
             enum: ['DSA', 'System Design', 'Behavioral', 'Technical Knowledge', 'Other', 'GRE-Word', 'GRE-MCQ'],
-            default: 'DSA',
         },
         // User ownership and privacy
         user: {

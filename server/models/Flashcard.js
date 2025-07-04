@@ -3,9 +3,15 @@ import mongoose from 'mongoose';
 
 const flashcardSchema = mongoose.Schema(
     {
+        // Dynamic field data based on deck type schema
+        fields: {
+            type: mongoose.Schema.Types.Mixed,
+            required: [true, 'Flashcard fields are required'],
+            default: {},
+        },
+        // Keep old fields for backward compatibility during migration
         question: {
             type: String,
-            required: [true, 'Please add a question'],
         },
         hint: {
             type: String,
@@ -13,7 +19,6 @@ const flashcardSchema = mongoose.Schema(
         },
         explanation: { // Will store Markdown
             type: String,
-            required: [true, 'Please add an explanation'],
         },
         problemStatement: {
             type: String,
@@ -32,12 +37,10 @@ const flashcardSchema = mongoose.Schema(
             type: String,
             default: '',
         },
-        // New "Type" property
+        // Keep old type field for backward compatibility
         type: {
             type: String,
-            required: [true, 'Please specify a type for the flashcard'],
             enum: ['DSA', 'System Design', 'Behavioral', 'Technical Knowledge', 'Other', 'GRE-Word', 'GRE-MCQ'], // Added GRE types
-            default: 'DSA', // Or 'Other', depending on your common case
         },
         // New metadata field for storing type-specific data
         metadata: {

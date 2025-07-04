@@ -19,8 +19,15 @@ const getFlashcards = async (req, res) => {
         }
 
         const flashcards = await Flashcard.find(query)
-            .populate('decks', 'name _id')
+            .populate('decks', 'name _id deckType')
             .populate('user', 'username')
+            .populate({
+                path: 'decks',
+                populate: {
+                    path: 'deckType',
+                    model: 'DeckType'
+                }
+            })
             .sort({ createdAt: -1 });
         
         res.status(200).json(flashcards);
@@ -33,33 +40,50 @@ const getFlashcards = async (req, res) => {
 // @route   POST /api/flashcards
 // @access  Private
 const createFlashcard = async (req, res) => {
-    const { question, hint, explanation, problemStatement, code, link, type, tags, decks, isPublic, metadata, language } = req.body;
+    const { fields, question, hint, explanation, problemStatement, code, link, type, tags, decks, isPublic, metadata, language } = req.body;
 
-    if (!question || !explanation || !type) {
-        return res.status(400).json({ message: 'Question, Explanation, and Type are required' });
+    // Support both new field-based structure and legacy structure
+    if (!fields && (!question || !explanation)) {
+        return res.status(400).json({ message: 'Flashcard fields are required' });
     }
 
     try {
-        const newFlashcard = new Flashcard({
-            question,
-            hint,
-            explanation,
-            problemStatement,
-            code,
-            link,
-            type,
+        const flashcardData = {
+            user: req.user._id,
+            isPublic: isPublic !== undefined ? isPublic : true,
             tags: tags || [],
             decks: decks || [],
             metadata: metadata || {},
-            user: req.user._id,
-            isPublic: isPublic !== undefined ? isPublic : true,
-            language: language || 'python',
-        });
+        };
+
+        // Use new field structure if provided, otherwise use legacy structure
+        if (fields) {
+            flashcardData.fields = fields;
+        } else {
+            // Legacy support
+            flashcardData.question = question;
+            flashcardData.hint = hint;
+            flashcardData.explanation = explanation;
+            flashcardData.problemStatement = problemStatement;
+            flashcardData.code = code;
+            flashcardData.link = link;
+            flashcardData.type = type;
+            flashcardData.language = language || 'python';
+        }
+
+        const newFlashcard = new Flashcard(flashcardData);
 
         const savedFlashcard = await newFlashcard.save();
         const populatedFlashcard = await Flashcard.findById(savedFlashcard._id)
-            .populate('decks', 'name _id')
-            .populate('user', 'username');
+            .populate('decks', 'name _id deckType')
+            .populate('user', 'username')
+            .populate({
+                path: 'decks',
+                populate: {
+                    path: 'deckType',
+                    model: 'DeckType'
+                }
+            });
         
         res.status(201).json(populatedFlashcard);
     } catch (error) {
@@ -72,7 +96,7 @@ const createFlashcard = async (req, res) => {
 // @route   PUT /api/flashcards/:id
 // @access  Private (owner only)
 const updateFlashcard = async (req, res) => {
-    const { question, hint, explanation, problemStatement, code, link, type, tags, decks, isPublic, metadata, language } = req.body;
+    const { fields, question, hint, explanation, problemStatement, code, link, type, tags, decks, isPublic, metadata, language } = req.body;
 
     try {
         const flashcard = await Flashcard.findById(req.params.id);
@@ -86,29 +110,43 @@ const updateFlashcard = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to update this flashcard' });
         }
 
-        if (question !== undefined && question.trim() === '' ||
-            explanation !== undefined && explanation.trim() === '' ||
-            type !== undefined && type.trim() === '') {
-            return res.status(400).json({ message: 'Question, Explanation, and Type cannot be empty if provided' });
+        // Support both new field structure and legacy structure
+        if (fields !== undefined) {
+            flashcard.fields = fields;
+        } else {
+            // Legacy field updates
+            if (question !== undefined && question.trim() === '' ||
+                explanation !== undefined && explanation.trim() === '' ||
+                type !== undefined && type.trim() === '') {
+                return res.status(400).json({ message: 'Question, Explanation, and Type cannot be empty if provided' });
+            }
+
+            flashcard.question = question !== undefined ? question : flashcard.question;
+            flashcard.hint = hint !== undefined ? hint : flashcard.hint;
+            flashcard.explanation = explanation !== undefined ? explanation : flashcard.explanation;
+            flashcard.problemStatement = problemStatement !== undefined ? problemStatement : flashcard.problemStatement;
+            flashcard.code = code !== undefined ? code : flashcard.code;
+            flashcard.link = link !== undefined ? link : flashcard.link;
+            flashcard.type = type !== undefined ? type : flashcard.type;
+            flashcard.language = language !== undefined ? language : flashcard.language;
         }
 
-        flashcard.question = question !== undefined ? question : flashcard.question;
-        flashcard.hint = hint !== undefined ? hint : flashcard.hint;
-        flashcard.explanation = explanation !== undefined ? explanation : flashcard.explanation;
-        flashcard.problemStatement = problemStatement !== undefined ? problemStatement : flashcard.problemStatement;
-        flashcard.code = code !== undefined ? code : flashcard.code;
-        flashcard.link = link !== undefined ? link : flashcard.link;
-        flashcard.type = type !== undefined ? type : flashcard.type;
         flashcard.tags = tags !== undefined ? tags : flashcard.tags;
         flashcard.decks = decks !== undefined ? decks : flashcard.decks;
         flashcard.metadata = metadata !== undefined ? metadata : flashcard.metadata;
         flashcard.isPublic = isPublic !== undefined ? isPublic : flashcard.isPublic;
-        flashcard.language = language !== undefined ? language : flashcard.language;
 
         const savedFlashcard = await flashcard.save();
         const populatedFlashcard = await Flashcard.findById(savedFlashcard._id)
-            .populate('decks', 'name _id')
-            .populate('user', 'username');
+            .populate('decks', 'name _id deckType')
+            .populate('user', 'username')
+            .populate({
+                path: 'decks',
+                populate: {
+                    path: 'deckType',
+                    model: 'DeckType'
+                }
+            });
         
         res.status(200).json(populatedFlashcard);
     } catch (error) {

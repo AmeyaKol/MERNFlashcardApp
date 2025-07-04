@@ -4,6 +4,7 @@ import useFlashcardStore from '../store/flashcardStore';
 import DeckList from './deck/DeckList';
 import FlashcardList from './flashcard/FlashcardList';
 import FlashcardForm from './flashcard/FlashcardForm';
+import DynamicFlashcardForm from './flashcard/DynamicFlashcardForm';
 import DeckManager from './deck/DeckManager';
 import Navbar from './Navbar';
 import AnimatedDropdown from './common/AnimatedDropdown';
@@ -243,7 +244,7 @@ const HomePage = () => {
             </>
           )}
 
-          {activeTab === 'create' && isAuthenticated && <FlashcardForm />}
+          {activeTab === 'create' && isAuthenticated && <DynamicFlashcardForm />}
           {activeTab === 'manage' && isAuthenticated && <DeckManager />}
         </div>
       </div>

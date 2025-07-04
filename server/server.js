@@ -4,6 +4,7 @@ import cors from 'cors';
 import connectDB from './config/db.js';
 import flashcardRoutes from './routes/flashcardRoutes.js';
 import deckRoutes from './routes/deckRoutes.js'; // Import deck routes
+import deckTypeRoutes from './routes/deckTypeRoutes.js'; // Import deck type routes
 import userRoutes from './routes/userRoutes.js';
 import dictionaryRoutes from './routes/dictionaryRoutes.js';
 
@@ -24,6 +25,7 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use('/api/flashcards', flashcardRoutes);
 app.use('/api/decks', deckRoutes); // Use deck routes
+app.use('/api/deck-types', deckTypeRoutes); // Use deck type routes
 app.use('/api/users', userRoutes);
 app.use('/api', dictionaryRoutes);
 

@@ -9,9 +9,11 @@ const getUnique = (arr, comp) => arr.map(e => e[comp])
 const useFlashcardStore = create((set, get) => ({
     flashcards: [],
     decks: [],
+    deckTypes: [],
     allTags: [],
     isLoading: false,
     isLoadingDecks: false,
+    isLoadingDeckTypes: false,
     error: null,
     isModalOpen: false,
     modalContent: { title: '', message: '', onConfirm: null, confirmText: 'OK', cancelText: 'Cancel' },
@@ -19,6 +21,7 @@ const useFlashcardStore = create((set, get) => ({
 
     editingFlashcard: null,
     editingDeck: null,
+    editingDeckType: null,
 
     selectedTypeFilter: 'All',
     selectedDeckFilter: 'All',
@@ -419,6 +422,73 @@ const useFlashcardStore = create((set, get) => ({
     // Clear dictionary data
     clearDictionaryData: () => {
         set({ dictionaryData: null });
+    },
+
+    // Deck Type Actions
+    fetchDeckTypes: async () => {
+        set({ isLoadingDeckTypes: true });
+        try {
+            const response = await api.get('/deck-types');
+            set({ deckTypes: response.data, isLoadingDeckTypes: false });
+        } catch (err) {
+            set({ error: err.message || 'Failed to fetch deck types', isLoadingDeckTypes: false });
+            get().showModal('Error', 'Could not fetch deck types.');
+        }
+    },
+
+    addDeckType: async (deckTypeData) => {
+        try {
+            const response = await api.post('/deck-types', deckTypeData);
+            set((state) => ({
+                deckTypes: [...state.deckTypes, response.data].sort((a, b) => a.name.localeCompare(b.name)),
+            }));
+            get().showToast('Deck type created!');
+            return response.data;
+        } catch (err) {
+            get().showModal('Error', err.response?.data?.message || 'Could not add deck type.');
+            throw err;
+        }
+    },
+
+    updateDeckType: async (id, updatedDeckTypeData) => {
+        try {
+            const response = await api.put(`/deck-types/${id}`, updatedDeckTypeData);
+            set((state) => ({
+                deckTypes: state.deckTypes.map((dt) => (dt._id === id ? response.data : dt)).sort((a, b) => a.name.localeCompare(b.name)),
+                editingDeckType: null,
+            }));
+            get().showToast('Deck type updated!');
+            return response.data;
+        } catch (err) {
+            get().showModal('Error', err.response?.data?.message || 'Could not update deck type.');
+            throw err;
+        }
+    },
+
+    deleteDeckType: async (id) => {
+        try {
+            await api.delete(`/deck-types/${id}`);
+            set((state) => ({
+                deckTypes: state.deckTypes.filter((dt) => dt._id !== id),
+            }));
+            get().showToast('Deck type deleted!');
+        } catch (err) {
+            get().showModal('Error', err.response?.data?.message || 'Could not delete deck type.');
+            throw err;
+        }
+    },
+
+    startEditDeckType: (deckType) => set({ editingDeckType: deckType }),
+    cancelEditDeckType: () => set({ editingDeckType: null }),
+
+    confirmDeleteDeckType: (id, name) => {
+        get().showModal(
+            "Confirm Deck Type Deletion",
+            `Are you sure you want to delete the deck type: "${name}"? This action cannot be undone.`,
+            () => get().deleteDeckType(id),
+            "Delete",
+            "Cancel"
+        );
     },
 
 }));

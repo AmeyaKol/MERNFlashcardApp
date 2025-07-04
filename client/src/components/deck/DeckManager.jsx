@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from "react";
 import useFlashcardStore from "../../store/flashcardStore";
 import DeckForm from "./DeckForm";
+import DeckTypeList from "./DeckTypeList";
 import AnimatedDropdown from "../common/AnimatedDropdown";
-import { PencilIcon, TrashIcon, FunnelIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, TrashIcon, FunnelIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { useAuth } from '../../context/AuthContext';
 
 function DeckManager() {
@@ -24,6 +25,7 @@ function DeckManager() {
   const [type, setType] = useState('DSA');
   const [isPublic, setIsPublic] = useState(true);
   const [selectedType, setSelectedType] = useState('All');
+  const [activeTab, setActiveTab] = useState('decks'); // 'decks' or 'deck-types'
 
   const deckTypes = ['All', 'DSA', 'System Design', 'Behavioral', 'Technical Knowledge', 'Other', 'GRE-Word', 'GRE-MCQ'];
 
@@ -87,9 +89,41 @@ function DeckManager() {
 
   return (
     <div id="deck-manager-section" className="bg-white rounded-lg shadow-xl p-6 lg:p-8 dark:bg-gray-800">
-      <h2 className="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3 dark:text-gray-200 dark:border-gray-700">
-        {editingDeck ? 'Edit Deck' : 'Create New Deck'}
-      </h2>
+      {/* Tab Navigation */}
+      <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1 mb-6">
+        <button
+          onClick={() => setActiveTab('decks')}
+          className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+            activeTab === 'decks'
+              ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+          }`}
+        >
+          <span className="flex items-center justify-center space-x-2">
+            <span>📚</span>
+            <span>Manage Decks</span>
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('deck-types')}
+          className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+            activeTab === 'deck-types'
+              ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+          }`}
+        >
+          <span className="flex items-center justify-center space-x-2">
+            <Cog6ToothIcon className="h-5 w-5" />
+            <span>Deck Types</span>
+          </span>
+        </button>
+      </div>
+
+      {activeTab === 'decks' ? (
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3 dark:text-gray-200 dark:border-gray-700">
+            {editingDeck ? 'Edit Deck' : 'Create New Deck'}
+          </h2>
       
       {/* Form for creating/editing a deck */}
       <form onSubmit={handleSubmit} className="mb-8 space-y-4">
@@ -240,6 +274,12 @@ function DeckManager() {
           </ul>
         )}
       </div>
+        </div>
+      ) : (
+        <div>
+          <DeckTypeList />
+        </div>
+      )}
     </div>
   );
 }

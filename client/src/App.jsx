@@ -16,6 +16,7 @@ function App() {
   const {
     fetchDecks,
     fetchFlashcards,
+    fetchDeckTypes,
     toast,
     darkMode,
   } = useFlashcardStore();
@@ -26,7 +27,8 @@ function App() {
   useEffect(() => {
     fetchDecks();
     fetchFlashcards();
-  }, [fetchDecks, fetchFlashcards]);
+    fetchDeckTypes();
+  }, [fetchDecks, fetchFlashcards, fetchDeckTypes]);
 
   useEffect(() => {
     if (darkMode) {

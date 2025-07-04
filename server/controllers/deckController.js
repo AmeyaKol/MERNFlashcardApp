@@ -1,19 +1,40 @@
 // server/controllers/deckController.js
 import Deck from '../models/Deck.js';
+import DeckType from '../models/DeckType.js';
 import Flashcard from '../models/Flashcard.js'; // Needed to update flashcards if a deck is deleted
 
 // @desc    Create a new deck
 // @route   POST /api/decks
 // @access  Private
 export const createDeck = async (req, res) => {
-  const { name, description, type, isPublic } = req.body;
+  const { name, description, deckType, type, isPublic } = req.body;
   if (!name) {
     return res.status(400).json({ message: 'Deck name is required' });
   }
-  if (!type) {
+  
+  // Support both new deckType and legacy type for backward compatibility
+  if (!deckType && !type) {
     return res.status(400).json({ message: 'Deck type is required' });
   }
+  
   try {
+    // If deckType is provided, validate it exists and is accessible
+    if (deckType) {
+      const deckTypeDoc = await DeckType.findById(deckType);
+      if (!deckTypeDoc) {
+        return res.status(400).json({ message: 'Invalid deck type' });
+      }
+      
+      // Check if user can access this deck type
+      const canAccess = deckTypeDoc.isSystem || 
+                       deckTypeDoc.isPublic || 
+                       (deckTypeDoc.user && deckTypeDoc.user.toString() === req.user._id.toString());
+      
+      if (!canAccess) {
+        return res.status(403).json({ message: 'Not authorized to use this deck type' });
+      }
+    }
+    
     // Check if deck with this name already exists for this user
     const deckExists = await Deck.findOne({ name, user: req.user._id });
     if (deckExists) {
@@ -23,12 +44,15 @@ export const createDeck = async (req, res) => {
     const deck = new Deck({ 
       name, 
       description,
-      type,
+      deckType: deckType || undefined,
+      type: type || undefined, // Keep for backward compatibility
       user: req.user._id,
       isPublic: isPublic !== undefined ? isPublic : true,
     });
     const createdDeck = await deck.save();
-    const populatedDeck = await Deck.findById(createdDeck._id).populate('user', 'username');
+    const populatedDeck = await Deck.findById(createdDeck._id)
+      .populate('user', 'username')
+      .populate('deckType');
     res.status(201).json(populatedDeck);
   } catch (error) {
     res.status(500).json({ message: 'Server Error: Could not create deck', error: error.message });
@@ -60,6 +84,7 @@ export const getDecks = async (req, res) => {
 
     const decks = await Deck.find(query)
       .populate('user', 'username')
+      .populate('deckType')
       .sort({ name: 1 });
     res.status(200).json(decks);
   } catch (error) {
@@ -84,7 +109,9 @@ export const getDeckTypes = async (req, res) => {
 // @access  Public (if public deck) / Private (if private deck and owner)
 export const getDeckById = async (req, res) => {
   try {
-    const deck = await Deck.findById(req.params.id).populate('user', 'username');
+    const deck = await Deck.findById(req.params.id)
+      .populate('user', 'username')
+      .populate('deckType');
     if (!deck) {
       return res.status(404).json({ message: 'Deck not found' });
     }
@@ -104,7 +131,7 @@ export const getDeckById = async (req, res) => {
 // @route   PUT /api/decks/:id
 // @access  Private (owner only)
 export const updateDeck = async (req, res) => {
-  const { name, description, type, isPublic } = req.body;
+  const { name, description, deckType, type, isPublic } = req.body;
   try {
     const deck = await Deck.findById(req.params.id);
     if (!deck) {
@@ -114,6 +141,23 @@ export const updateDeck = async (req, res) => {
     // Check if user owns this deck
     if (deck.user.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to update this deck' });
+    }
+
+    // If deckType is provided, validate it exists and is accessible
+    if (deckType) {
+      const deckTypeDoc = await DeckType.findById(deckType);
+      if (!deckTypeDoc) {
+        return res.status(400).json({ message: 'Invalid deck type' });
+      }
+      
+      // Check if user can access this deck type
+      const canAccess = deckTypeDoc.isSystem || 
+                       deckTypeDoc.isPublic || 
+                       (deckTypeDoc.user && deckTypeDoc.user.toString() === req.user._id.toString());
+      
+      if (!canAccess) {
+        return res.status(403).json({ message: 'Not authorized to use this deck type' });
+      }
     }
 
     // Check if new name already exists for this user (and it's not the current deck's name)
@@ -126,11 +170,14 @@ export const updateDeck = async (req, res) => {
 
     deck.name = name || deck.name;
     deck.description = description !== undefined ? description : deck.description;
-    deck.type = type || deck.type;
+    deck.deckType = deckType || deck.deckType;
+    deck.type = type || deck.type; // Keep for backward compatibility
     deck.isPublic = isPublic !== undefined ? isPublic : deck.isPublic;
 
     const updatedDeck = await deck.save();
-    const populatedDeck = await Deck.findById(updatedDeck._id).populate('user', 'username');
+    const populatedDeck = await Deck.findById(updatedDeck._id)
+      .populate('user', 'username')
+      .populate('deckType');
     res.status(200).json(populatedDeck);
   } catch (error) {
     res.status(500).json({ message: 'Server Error: Could not update deck', error: error.message });
